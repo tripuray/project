@@ -1,431 +1,759 @@
-WEEK 1
-
-MAVEN PROJECT BUILDING
-Open gitbash ->mkdir selab ->cd selab(A foler will be created at Cdrive/users/name)
-Open eclipse File->import->Git->Projects from git->at clone url, paste the url->click next
-->browse the selab folder->click next and finish
-In project explorer cloned prj will be visible
-Correct the pom.xml code in prj
-->right click on prj->run as maven clean(BUILD SUCCESS SHOULD DISPLAY)->run as maven install
-->run as maven test->run as maven build, in goals give clean install test->next(BUILD SUCCESS)
-In prj folder/target/.war will be generated
-Right click on prj folder->run as->run on server
-select apache->select tomcat v9->browse the location where tomcat was installed
-Server will start running 
-Go to edge give localhost:8080 then a web page like "WELCOME" will be visible
-
-PUSH THIS PRJ TO GITHUB
-Create a repo
-Delete .git file in prj folder
-Open gitbash->git init->git add .->git commit -m "msg"
-Give all the commands in gitbash present under created repo in GitHub
-
-DOCKER IMAGE BUILDING
-Open powershell
-->cdselab->cd foldername that has pom.xml->mvn clean package
-A war file will be generated->Create a folder in selab name it as docker
-keep the generated war file and existed dockerfile in the docker folder
-Open dockerfile in notepad u will see target/*.war remove that and give the generated war file name and
-under tomcat give EXPOSE 8080
-Go to powershell->docker build -t csimage:latest .(use dot when actual command dont work)->docker images (here csimage should be visible)
-->docker run -d --name library_app -p 7007:8080 csimage:latest
-Open chrome->type hub.docker.com and sign in
-open repositories section present at leftside in docker hub
-Go to powershell again->docker login->docker tag csimage:latest username/csimage:2.0
-->docker push username/csimage:2.0->docker pull username/csimage:2.0 (output be like image created UpToDate...)
-Open chrome->type localhost:7007 (Entire web page should be visible)
-
-(Can use any number instead of 2.0)
-
-Docker container image:
-docker run -it -p �name ubuntu-cont ubuntu:latest
-apt update
-exit
-docker commit ubuntu-cont img-commit
-docker images
-docker run -it img-commit
-git �version
-exit
-docker tag img-commit tripurayalla/img-commit
-docker push tripurayalla/img-commit
-mkdir img-creation
-cd img-creation
-notepad Dockerfile.txt
-paste this content:
-# Use Ubuntu as the base image
-FROM ubuntu:latest
-
-# Install Nginx
-RUN apt update && apt install -y nginx
-
-# Copy your custom HTML page into the Nginx web directory
-COPY index.html /var/www/html/
-
-# Expose port 80 for web access
-EXPOSE 80
-
-# Start Nginx in the foreground
-CMD ["nginx", "-g", "daemon off;"]
-
-notepad index.html
-<!DOCTYPE html>
-<html>
-  <head><title>My Docker Web Page</title></head>
-  <body style="font-family: sans-serif; text-align: center; margin-top: 50px;">
-    <h1>Welcome to My Custom Docker Image!</h1>
-    <p>This page is served by Nginx running inside Docker</p>
-  </body>
-</html>
-
-ren Dockerfile.txt Dockerfile
-docker build -t img-dockerfile
-docker run -it img-dockerfile
-exit
-docker tag img-dockerfile tripurayalla/img-docekrfile
-docker push tripurayalla/img-dockerfile
-docker images
-
-DOCKER COMPOSE FILE:
-Running 2 servers at the same time
-docker run -d -p 8010:80 nginx
-docker run -d -p 8020:8080 tomee
-open localhost to view pages(8010,8020)
-create docker-compose.yml file (notepad docker-compose.yml)
-ren Dockerfile.txt Dockerfile
-docker-compose up -d
-open localhost
-
-
-WEEK 8 Jenkins
-
-STEP 1: 
-localhost:8080
-username = admin
-c folder -> prgm data -> Jenkins -> .Jenkins -> sectret -> initialadmin password
-
-STEP 2:
-new item -> mavenjava_build -> freestyle project
-description = java build demo
-source code mgmt. = tick git
-branches to build */main
-Add build step 
--> Invoke top-level Maven targets -> Maven version: MAVEN_HOME, Goals: clean
--> Invoke top-level Maven targets -> Maven version: MAVEN_HOME, Goals: install
-Add post build action 
--> Archive the artifacts, Files to archive: **/*
-->Build other projects, Projects to build: MavenJava_Test, Trigger: Only if build is stable
-Apply and Save
-
-STEP 3:
-new item -> mavenjava_test -> freestyle project
-description = test demo
-Build env: delete workspace before build starts
-Add build step 
-->Copy artifacts from another project, Project name: MavenJava_Build, Build: tick Stable build only, Artifacts to copy: **/*
--> Invoke top-level Maven targets -> Maven version: MAVEN_HOME, Goals: test
-Add post build action 
--> Archive the artifacts, Files to archive: **/*
-Apply and Save
-
-STEP 4:
-Create Pipeline View for Maven Java project
-        ├── Click "+" beside "All" on the dashboard
-        ├── Enter name: MavenJava_Pipeline
-        ├── Select "Build pipeline view"         // tick here
-         |--- create
-Pipeline Flow: Layout: Based on upstream/downstream relationship, Initial job: MavenJava_Build, Apply and Save OK
-Run the Pipeline and Check Output
-
-
-II. Maven Web Automation Steps
-
-STEP 1: localhost:8080
-
-STEP 2:
-new item -> MavenWeb_build -> freestyle project
-description = web build demo
-source code mgmt. = tick git
-branches to build */main
-Add build step 
--> Invoke top-level Maven targets -> Maven version: MAVEN_HOME, Goals: clean
--> Invoke top-level Maven targets -> Maven version: MAVEN_HOME, Goals: install
-Add post build action 
--> Archive the artifacts, Files to archive: **/*
-->Build other projects, Projects to build: MavenWeb_Test, Trigger: Only if build is stable
-Apply and Save
-
-STEP 3:
-new item -> MavenWeb_test -> freestyle project
-description = test demo
-Build env: delete workspace before build starts
-Add build step 
-->Copy artifacts from another project, Project name: MavenWeb_Build, Build: tick Stable build only, Artifacts to copy: **/*
--> Invoke top-level Maven targets -> Maven version: MAVEN_HOME, Goals: test
-Add post build action 
--> Archive the artifacts, Files to archive: **/*
-->Build other projects, Projects to build: MavenWeb_deploy, Trigger: Only if build is stable
-Apply and Save
-
-STEP 4:
-new item -> MavenWeb_deploy -> freestyle project
-description = web code deployment
-Build env: delete workspace before build starts
-Add build step 
-->Copy artifacts from another project, Project name: MavenWeb_test, Build: tick Stable build only, Artifacts to copy: **/*
--> Invoke top-level Maven targets -> Maven version: MAVEN_HOME, Goals: test
-Add post build action 
--> "Deploy WAR/EAR to a container"
-   └── WAR/EAR File: **/*.war
-   └── Context path: Webpath
- └── Add container -> Tomcat 9.x remote
-└── Credentials: Username: admin/******, Password: 1234
-── Tomcat URL: https://localhost:8085/
-Apply and Save
-
-STEP 5:
-Create Pipeline View for Maven web project
-        ├── Click "+" beside "All" on the dashboard
-        ├── Enter name: MavenWeb_Pipeline
-        ├── Select "Build pipeline view"         // tick here
-         |--- create
-Pipeline Flow: Layout: Based on upstream/downstream relationship, Initial job: MavenJava_Build, Apply and Save OK
-Run the Pipeline and Check Output
-Open Tomcat homepage in another tab, Click on the "/webpath" option under the manager app
- Note: 1.	 It ask for user credentials for login ,provide the credentials of tomcat.
-2.	It provide the page with out project name which is highlighted.
-3.	After clicking on our project we can see output.
-
-
-
-
------------------------------------------------------------------------
-
-
-WEEK 9
-
-new item -> jenkins_script -> pipeline -> ok
-Config: Description = creating java pipeline project using script
-Script:
-pipeline {
-    agent any
-
-    tools {
-        maven 'MAVEN_HOME'
-    }
-
-    stages {
-
-        stage('Checkout from GitHub') {
-            steps {
-                echo "Cloning repository..."
-                deleteDir()
-                git url: 'https://github.com/NaveenCK-10/selab-internal.git', branch: 'main'
-            }
-        }
-
-        stage('Clean') {
-            steps {
-                echo "Cleaning project..."
-                bat "mvn clean"
-            }
-        }
-
-        stage('Compile & Install') {
-            steps {
-                echo "Compiling and installing..."
-                bat "mvn install"
-            }
-        }
-
-        stage('Run Tests') {
-            steps {
-                echo "Running test cases..."
-                bat "mvn test"
-            }
-        }
-
-        stage('Package Application') {
-            steps {
-                echo "Packaging application..."
-                bat "mvn package"
-            }
-        }
-
-        stage('Final Output') {
-            steps {
-                echo "Build Pipeline Completed Successfully!"
-            }
-        }
-    }
-}
-Triggers: Build periodically -> schedule=* * * * *
-Apply Save
-Build Now
-Stages
-
-
-----------------------------------------------------------------------------------
-
-
-
-WEEK 10
-
-command prompt
-curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-windows-amd64.exe
-rename minikube-windows-amd64.exe minikube.exe
-minikube start --driver=docker
-minikube kubectl -- get pods -A
-kubectl create deployment mynginx --image=nginx
-if already created then kubectl set image deployment/myngnix nginx=nginx:latest
-kubectl get deployments
-kubectl expose deployment mynginx --type=NodePort --port=80 --target-port=80
-kubectl scale deployment mynginx --replicas=4
-kubectl get service mynginx
-kubectl get svc
-kubectl port-forward svc/mynginx 8081:80 
-
-if error: minikube tunnel , minikube service mynginx --url
-kubectl delete deployment mynginx
-kubectl delete service mynginx
-minikube stop
-minikube delete
-
-localhost:8081 or minikube service mynginx 
-kubectl describe svc mynginx (optional)
-
-docker pull jasonrivers/nagios:latest
-docker run --name nagiosdemo -p 8888:80 jasonrivers/nagios:latest
-localhost:8888
-username= nagiosadmin , password= nagios
-Optional: docker stop nagiosdemo, docker rm nagiosdemo, docker images, docker rmijasonrivers/nagios:latest
-
-
-
-------------------------------------------------------------------------------
-
-
-WEEK 11(webhooks)
-
-open ngrok website
-your authtoken -> command line -> show authtoken -> copy
-
-open ngrok app(opens in cmd)
-paste this copied one : ngrok config add-authtoken 35sQ76wrMHQ50ajPdIH6keHHzEd_73RS45k9uo2HScnpWDhut
-ngrok http 8080/1
-
-you will get a url(https://unpermeated-amada-uncloyed.ngrok-free.dev) copy it
-go to your GitHub repo
-settings -> webhooks -> add webhook -> payload url = https://unpermeated-amada-uncloyed.ngrok-free.dev/github-webhook/ , 
-content type=application/json, 
-Which events would you like to trigger this webhook? = Just the push event , active , 
-Add Webhook
-
-open jenkins
-select the job(mavenjava_build) -> configure -> triggers = tick GitHub hook trigger for GITScm polling -> Save
-
-git bash
-git clone https://github.com/SindhuSri19/selab-internal
-cd selab-internal
-nano README.md -> make changes -> ctrl o -> enter -> ctrl x
-git add .
-git commit -m "msg"
-git push origin main
-
-jenkins -> build queue or mavenjava_build or pipeline view
-
-
-
-Gmail: Enable App Password (for 2-Step Verification)
-i. Go to: https://myaccount.google.com
-ii. Enable 2-Step Verification , Navigate to: Security → 2-Step Verification, Turn it ON, Complete the OTP verification process (via phone/email)
-iii. Generate App Password for Jenkins, Go to: Security → App passwords, Select: App: Other (Custom name), Name: Jenkins-Demo, Click Generate, Copy the 16-digit app password, Save it in a secure location (e.g., Notepad)
-                 
-2.  Jenkins Plugin Installation
-i. Open Jenkins Dashboard
-ii. Navigate to: Manage Jenkins → Manage Plugins
-iii. Install Plugin: Search for and install: Email Extension Plugin
-
-3. Configure Jenkins Global Email Settings
-i. Go to: Manage Jenkins → Configure System
-A. E-mail Notification Section
-Field	Value
-SMTP Server	smtp.gmail.com
-Use SMTP Auth	✅ Enabled
-User Name	Your Gmail ID (e.g., archanareddykmit@gmail.com)
-Password	Paste the 16-digit App Password
-Use SSL	✅ Enabled
-SMTP Port	465
-Reply-To Address	Your Gmail ID (same as above)
-➤ Test Configuration
-•	Click: Test configuration by sending test e-mail
-•	Provide a valid email address to receive a test mail
-•	✅ Should receive email from Jenkins
-
-B. Extended E-mail Notification Section
-Field	Value
-SMTP Server	smtp.gmail.com
-SMTP Port	465
-Use SSL	✅ Enabled
-Credentials	Add Gmail ID and App Password as Jenkins credentials
-Default Content Type	text/html or leave default
-Default Recipients	Leave empty or provide default emails
-Triggers	Select as per needs (e.g., Failure)
-
-4.  Configure Email Notifications for a Jenkins Job
-i. Go to: Jenkins → Select a Job → Configure
-ii. In the Post-build Actions section:
-Click: Add post-build action → Editable Email Notification
-A. Fill in the fields:
-Field	Value
-Project Recipient List	Add recipient email addresses (comma-separated)
-Content Type	Default (text/plain) or text/html
-Triggers	Select events (e.g., Failure, Success, etc.)
-Attachments	(Optional) Add logs, reports, etc.
-iii. Click Save
-
-
-
-
--------------------------------------------------------------
-
-
-WEEK 12
-
-Modules -> Launch AWS academy lab -> I agree -> Start lab orange to green
-click in green AWS
-
-Click EC2 -> launch instance: 
--> Name = MyExampleServer , select ubuntu , default ubuntu server 24.04 , architecture 64bitx85 , instance type = t2.micro 
--> create new key pair , name = MyExampleKeyPair RSA .pem , click create key pair , download , create AWS folder on desktop and put .pem file in it
--> network settings - create security group - allow ssh, https, http
-storage 8gb
-click launch instance
-
-Instances tab -> green success message , MyExampleServer is running in instances , select it and click on connect , copy ssh .... command
-go to AWS folder, open cmd , paste ssh command , yes, sudo apt update , sudo apt-get install docker.io , sudo apt install git , sudo apt install nano
-
-Create index.html in AWS folder , right click in aws folder ->open git bash here , 
-git init , 
-git add . , 
-git commit -m "msg" , 
-create new repo AWS, 
-git branch -M main , 
-git remote add origin gitlink , 
-git push -u origin main , 
-refresh repo ,  
-copy https path , 
-git clone copiedgiturl , 
-ls , cd AWS , ls , nano Dockerfile 
-FROM nginx:alpine
-COPY . /usr/share/nginx/html/
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
-ctrl o , ctrl x
-sudo docker build –t mywebapp ,
-sudo docker run –d –p 80:80 mywebapp , 
-click on instance id , 
-click on link beside ipv4 address , 
-add http:// or https
-optional : sudo docker ps , sudo docker stop <container-id>
-
-If your app is not running go to security  and Click on security groups, Click on edit inbound rules, Click on add rule give port as 9090 and 0.0.0.0/0 click on save, refresh
+1.Creation of Amazon EC2 Instances (Linux and Windows) and Establishing Secure Connections Using SSH from Local Machine, PuTTY (.pem & .ppk), AWS CloudShell, and Remote Desktop Protocol (RDP)
+________________________________________
+🧾 PREREQUISITES
+Make sure you have:
+•	✅ EC2 Ubuntu instance running
+•	✅ .ppk private key file
+•	✅ PuTTY installed (Windows)-- https://putty.org/index.html   (INSTALL FIRST ONE)
+________________________________________
+🔹 STEP 1: Check Security Group
+Go to EC2 → Security Groups → Inbound rules
+Ensure this rule exists:
+Type: SSH
+Port: 22
+Source: My IP
+❌ If SSH is blocked → connection will fail
+________________________________________
+🔹 STEP 2: Open PuTTY
+1.	Launch PuTTY
+2.	In Session screen:
+Host Name (or IP address): EC2—CONNECT—COPY (DNS NAME)
+ubuntu@<PUBLIC-IP>
+Example:
+ubuntu@3.110.xxx.xxx
+________________________________________
+🔹 STEP 3: Attach the .ppk Key
+In PuTTY left menu, go to:
+Connection → SSH → Auth → Credentials
+1.	Click Browse
+2.	Select your .ppk file
+3.	Click Open
+________________________________________
+🔹 STEP 4: Connect to EC2
+Click Open
+•	First time → click Yes (security alert)
+•	PuTTY will log in automatically as:
+ubuntu
+🎉 You are now connected to your Ubuntu EC2 instance
+________________________________________
+🧪 VERIFY CONNECTION
+Run:
+whoami
+Output should be:
+Ubuntu
+
+________________________________________
+ Connect EC2 Ubuntu Instance Using PuTTY (Windows) ---USING PEM KEYPAIR
+________________________________________
+PREREQUISITES
+You must have:
+•	✅ EC2 Ubuntu instance running
+•	✅ Public IPv4 address (or Elastic IP)
+•	✅ Key pair (.pem file) used while launching EC2
+•	✅ PuTTY & PuTTYgen installed
+👉 Download PuTTY:
+https://www.putty.org
+________________________________________
+🔹 STEP 1: Convert .pem to .ppk using PuTTYgen
+PuTTY cannot use .pem directly.
+Steps:
+1.	Open PuTTYgen
+2.	Click Load
+3.	Select your .pem file
+(change file type to All Files)
+4.	Click Open
+5.	Click Save private key
+6.	Save as keyname.ppk
+✔ Conversion done
+________________________________________
+🔹 STEP 2: Get EC2 Public IP
+Go to:
+AWS Console → EC2 → Instances---CONNECT –COPY DNS NAME
+________________________________________
+🔹 STEP 3: Configure PuTTY
+1️⃣ Open PuTTY
+Session:
+•	Host Name (or IP address): dns name
+________________________________________
+2️⃣ Load Private Key
+Go to:
+Connection → SSH → Auth → Credentials
+•	Click Browse
+•	Select your .ppk file
+________________________________________
+🔹 STEP 4: Connect
+Click Open
+•	First time → click Yes (security alert)
+•	Login happens automatically as:
+ubuntu
+🎉 You are now connected to Ubuntu EC2
+________________________________________
+🧪 VERIFY CONNECTION
+Run:
+whoami
+Output:
+ubuntu
+________________________________________
+):
+________________________________________
+Connecting to EC2 Using AWS CloudShell
+1.	Create the EC2 instance using a key pair (.pem).
+2.	Log in to AWS Console and click on the CloudShell icon (terminal icon on the top-right).
+3.	Once CloudShell opens, go to AWS Services → EC2.
+4.	Select your EC2 instance and click Connect.
+5.	Choose the SSH client tab.
+6.	Copy the ssh -i command shown there.
+7.	Paste the command in CloudShell and try to run it.
+❌ It will fail with an error like:
+“key pair is not available / no such file or directory”
+(because the key file is not yet in CloudShell).
+8.	Now, in CloudShell, click on the “+” (Actions) icon on the right side.
+9.	Select Upload file and upload the key pair (.pem) from your local machine.
+10.	After upload, copy the ssh -i command again from EC2 → Connect → SSH client.
+11.	Paste and execute the command in CloudShell.
+12.	✅ You are now successfully connected to the EC2 instance.
+________________________________________
+Step-by-Step: Create Windows EC2 Instance and Connect via RDP
+Step 1: Launch a Windows EC2 Instance
+1.	Log in to your AWS Management Console.
+2.	Navigate to EC2 → Instances → Launch Instances.
+3.	Select an Amazon Machine Image (AMI):
+o	Choose a Windows Server AMI (e.g., Windows Server 2019 or 2022).
+4.	Choose an Instance Type (e.g., t2.micro for free tier or as per your requirement).
+5.	Configure Instance Details as needed.
+6.	Add Storage if required (default is usually sufficient).
+7.	Configure Security Group:
+o	Ensure RDP port 3389 is allowed.
+o	Source can be My IP (for security) or a wider range if needed.
+8.	Select or create a new Key Pair:
+o	Download the .pem file (keep it safe; it’s needed to decrypt the password).
+9.	Click Launch Instance.
+________________________________________
+Step 2: Get the Public DNS / IP
+1.	After the instance is running, go to EC2 → Instances.
+2.	Select your instance and note the Public DNS (IPv4) or Public IP.
+________________________________________
+Step 3: Retrieve the Windows Administrator Password
+1.	Select your instance → Click Connect → RDP Client.
+2.	Click Get Password.
+3.	Upload your Key Pair (.pem) file.
+4.	Click Decrypt Password.
+5.	Copy the Administrator password shown.
+________________________________________
+Step 4: Connect via RDP
+1.	On your local Windows machine, open Remote Desktop Connection (mstsc).
+2.	In the Computer field, enter the Public DNS or IP address of the EC2 instance.
+3.	Click Connect.
+4.	In the login prompt:
+o	Username: Administrator
+o	Password: Paste the decrypted password from Step 3.
+5.	Click OK.
+1.	a) Create and attach an EBS volume to an EC2 instance, and 
+b)	scale the instance by increasing CPU and RAM by changing the instance type.
+
+
+EBS:
+a)	Creating  and attaching  an EBS volume to an EC2 instance
+Step 1: Create a New EBS Volume
+Open the EC2 Dashboard.
+From the left-hand menu, select Volumes under Elastic Block Store (EBS).
+Click Create Volume.
+Choose:
+Volume type (gp3/gp2)
+Size of the volume
+Availability Zone (must be the same as the EC2 instance)
+Click Create Volume.
+________________________________________
+Step 2: Attach the EBS Volume to the Existing EC2 Instance
+In the Volumes section, select the newly created volume.
+Click Actions → Attach Volume.
+Select the target EC2 instance from the list.
+Specify the device name (example: /dev/xvdf).
+Click Attach.
+________________________________________
+Step 3: Verify the Volume on the EC2 Instance
+Connect to the EC2 instance using SSH.
+Check the attached disks:
+lsblk
+Identify the new volume (e.g., /dev/xvdf).
+
+Note: Ensure that the EBS volume and the EC2 instance belong to the same Availability Zone, as cross-AZ attachment is not supported.
+________________________________________
+
+b)Procedure: increasing/decreasing  of CPU and RAM
+   Step 1.  - Navigate to the EC2 dashboard.
+   Step 2. - Stop the EC2 instance associated with the EBS volume.
+ 	Step 3.  - Click "Actions" and then—instance settings—change the instance type"Modify Volume".
+  	Step 4. -Increase/ decrease the size or change the volume type to a higher performance specification.
+   	Step 5. - Click "Modify" to apply the changes.
+   	Step 6:  Now the start the machine you see with increase /decrease of size and performance
+________________________________________
+2.Attach and permanently mount an EBS volume to a Linux EC2 instance to ensure data persistence across reboots.
+Objective
+Attach an additional EBS volume (example: 20 GB) to a Linux EC2 instance and mount it using the system default device names that appear on modern EC2 (Nitro) instances.
+Note: Although you select a device name like /dev/xvdf in the AWS Console, the OS typically shows the disk as NVMe devices such as /dev/nvme1n1 and partitions as /dev/nvme1n1p1.
+________________________________________
+Step 1: Create an EBS Volume
+1.	Log in to AWS Management Console
+2.	Go to EC2 → Volumes
+3.	Click Create volume
+4.	Choose:
+o	Volume type: gp3 (recommended)
+o	Size: 20 GB (example)
+o	Availability Zone: Same AZ as the EC2 instance
+5.	Click Create volume
+________________________________________
+Step 2: Attach the EBS Volume to EC2
+1.	Select the newly created EBS volume
+2.	Click Actions → Attach volume
+3.	Choose:
+o	Instance: Your Linux EC2 instance
+o	Device name (console level): /dev/xvdf
+4.	Click Attach
+Internally, Linux will expose this as an NVMe device (for example /dev/nvme1n1).
+________________________________________
+Step 3: Connect to the EC2 Instance
+Connect using SSH:
+ssh -i key.pem ec2-user@<public-ip>
+________________________________________
+Step 4: Verify the Attached Disk
+List all block devices:
+lsblk
+You will typically see:
+•	Root volume: /dev/nvme0n1 (with partitions like nvme0n1p1)
+•	New EBS volume: /dev/nvme1n1 (no partition yet)
+Check filesystem information:
+lsblk -fs
+________________________________________
+Step 5: Create a Partition on the New Volume
+Create a partition on the unpartitioned disk:
+fdisk /dev/nvme1n1
+Inside fdisk:
+•	Press m → Help menu
+•	Press n → New partition
+•	Press p → Primary partition
+•	Press Enter → Default partition number
+•	Press Enter → Default first sector
+•	Press Enter → Default last sector (use full disk)
+•	Press w → Write changes and exit
+Notify the kernel:
+partprobe
+________________________________________
+Step 6: Verify the New Partition
+lsblk -fs
+You should now see:
+•	/dev/nvme1n1p1
+________________________________________
+Step 7: Format the Partition
+Format the partition with XFS filesystem:
+mkfs.xfs /dev/nvme1n1p1
+Verify:
+lsblk -fs
+________________________________________
+Step 8: Create a Mount Directory
+mkdir /mnt/archana
+________________________________________
+Step 9: Mount the Volume
+mount /dev/nvme1n1p1 /mnt/archana
+Verify:
+df -h
+________________________________________
+Step 10: Make the Mount Persistent (fstab)
+Get the UUID:
+blkid /dev/nvme1n1p1
+Example output:
+UUID="f1e294e6-7657-4761-bba5-bb2d0eab3936"
+Edit /etc/fstab:
+nano /etc/fstab
+Add this line at the end:
+UUID=f1e294e6-7657-4761-bba5-bb2d0eab3936   /mnt/archana   xfs   defaults,nofail   0   0
+Save and exit.
+Test the entry:
+mount -a
+navigate to cd /mnt/archana
+create the files here
+touch f1
+________________________________________
+Step 11: Verify Persistence
+1.	Reboot the instance:
+reboot
+2.	Reconnect and check:
+df -h
+➡️ The volume should mount automatically.
+________________________________________
+Step 12: Detach and Reattach Volume (Data Recovery Scenario)
+Detach the Volume
+•	EC2 → Volumes → Select volume
+•	Actions → Detach volume
+Attach to Another EC2 Instance (Same AZ)
+1.	Attach the volume to a new instance
+2.	Log in to the new instance
+3.	Create mount directory:
+mkdir /mnt/archana
+4.	Mount the existing partition:
+mount /dev/nvme1n1p1 /mnt/archana
+✅ All previously stored data will be available.
+________________________________________
+Summary Flow
+Create Volume → Attach → lsblk → fdisk → mkfs → mkdir → mount → fstab → reboot
+________________________________________
+
+3. Create a snapshot of the attached EBS volume and use it to create and attach a new volume to an EC2 instance in another AWS region.
+Attaching Volumes across regions of EC2 using the snapshot
+To create a snapshot of an EBS volume and attach it to an instance in another region in AWS, you'll need to follow these steps:
+
+Step 1. Create a Snapshot:
+   a. Sign in to the AWS Management Console.
+   b. Navigate to the EC2 Dashboard.
+   c. Click on "Volumes" in the left-hand navigation pane.
+   d. Select the EBS volume you want to create a snapshot of.
+   e. Click on the "Actions" dropdown menu above the volume list and select "Create Snapshot."
+   f. Provide a name and description for the snapshot.
+   g. Click on the "Create Snapshot" button to initiate the snapshot creation process.
+
+Step 2. Copy the Snapshot to Another Region:
+   a. Once the snapshot is created, go to the "Snapshots" section in the EC2 Dashboard.
+   b. Select the snapshot you just created.
+   c. Click on the "Actions" dropdown menu above the snapshot list and select "Copy Snapshot."
+   d. Choose the destination region where you want to copy the snapshot.
+   e. Click on the "Copy Snapshot" button to initiate the copy process. This may take some time depending on the size of the snapshot and the network speed.
+
+Step 3. Monitor the Snapshot Copy Progress:
+   a. You can monitor the progress of the snapshot copy by navigating to the "Snapshots" section in the EC2 Dashboard of the source region.
+   b. Look for the snapshot you copied and check its status. It will change from "pending" to "completed" once the copy process is finished.
+
+Step 4. Switch to the Destination Region:
+a.	Use the region selector in the top-right corner of the AWS Management Console to switch to the destination region where you copied the snapshot.
+
+Step 5. Create a Volume from the Snapshot:
+   a. In the EC2 Dashboard of the destination region, go to the "Snapshots" section.
+   b. Find the snapshot you copied from the source region.
+   c. Click on the snapshot, then click on the "Actions" dropdown menu and select "Create Volume."
+   d. Configure the volume settings, such as volume type, size, and availability zone.
+   e. Click on the "Create Volume" button to create the volume from the snapshot.
+
+Step 6. Create the ec2 instance & Attach the Volume to an Instance:
+   a. Once the volume is created, navigate to the "Volumes" section in the EC2 Dashboard.
+   b. Find the newly created volume and select it.
+   c. Click on the "Actions" dropdown menu and select "Attach Volume."
+   D  the EC2 instance to which you want to attach the volume and specify the device name.
+   e. Click on the "Attach" button to attach the volume to the instance.
+
+EFS:
+Step 1: Launching EC2 Instances
+1. Sign in to AWS Management Console.
+2. Go to the EC2 dashboard.
+3. Click on "Launch Instance".
+4. Configure instance details:
+   - Instance Name: EFS-1
+5. Choose an Amazon Machine Image (AMI) for Linux.
+6. Select instance type: t2.micro.
+   - Key Pair: EFS
+   - Network: Choose Subnet-1a
+   - Security Group: Create a new security group (SG) and add NFS and allow from anywhere.
+7. Launch the instance.
+8. Repeat the above steps to launch another instance named EFS-2 in Subnet-1b with the same configuration.
+Step 2: Creating an EFS File System
+1. Go to the EFS service in the AWS Management Console.
+2. Click on "Create file system".
+3. Specify details:
+   - Name: Optional
+   - VPC: Default
+   - Enable region button.
+Click on "Next".
+4. In the Network settings:
+   - Delete all security groups.
+   - Select the newly created security group (NFS).---which is created while creating instance
+ Click on "Next" and review the configuration.
+Click on "Create file system".
+Step 3: Accessing the two EC2 instances named EFS-1 & EFS -2 in two different PowerShell sessions and performing the specified tasks:
+Accessing EFS-1 Instances in Two Different PowerShell Sessions:
+1. Open Two PowerShell Sessions:
+   - Open two separate PowerShell windows or tabs on your local machine.
+For each  Instance:
+2. SSH into the Instance:
+   - Use the SSH command to connect to the EFS-1 instance
+          ssh -i [path-to-your-keypair.pem] ec2-user@[instance-public-ip]
+3. Switch to Root User:
+   - Gain root access by executing the following command:
+         sudo su
+    4. Create a Directory:
+   - Make a directory named "efs" using the following command:
+          mkdir efs
+     5. Install Amazon EFS Utilities:
+   - Use yum package manager to install the Amazon EFS utilities:
+         yum install -y amazon-efs-utils
+     6. List Files:
+   - Execute the following command to list files in the current directory:
+          ls
+     7. Verify Installation (Optional):
+   - Optionally, you can verify the installation of the Amazon EFS utilities by checking the version:
+         efs-utils --version
+     Repeat Steps 2-7 for -------------------------  EFS-2 Instance.
+By following these steps, you'll have accessed each EFS-1 instance in separate PowerShell sessions, switched to the root user, created a directory named "efs," installed the Amazon EFS utilities, and listed files in the directory. This setup allows you to configure and manage each instance individually as needed.
+Step 4: Attaching EFS to EC2 Instances
+1. Go to the EFS service in the AWS Management Console.
+2. Click on the target EFS file system.
+3. Click on the "Attach" button.
+4. Choose "Mount via DNS" option.
+5. Copy the displayed command. ,on both ec2 instances(powershell)
+6. Paste and execute the copied command in the terminal to mount the EFS file system onto the instance.
+Step 5: Verify and Test EFS
+1. Change the directory to EFS on both instances.
+2. Create a file on one instance.
+3. Verify that the file automatically synchronizes and appears on the other instance.
+
+
+S3:
+1.Creating an S3 bucket, upload an object, and enable public access 
+1️⃣ Create an S3 Bucket (with Public Access Enabled)
+Step 1: Open S3 Service
+•	Login to AWS Management Console
+•	Go to Services → S3
+•	Click Create bucket
+________________________________________
+Step 2: Bucket Configuration
+•	Bucket name: my-public-bucket-123
+•	Region: Choose nearest region
+________________________________________
+Step 3: Disable Block Public Access (IMPORTANT)
+Under Block Public Access settings for this bucket:
+❌ Uncheck Block all public access
+You must uncheck ALL options:
+✔ Check I acknowledge that this bucket will become public
+👉 Click Create bucket
+________________________________________
+2️⃣ Enable Public Access at Bucket Level (ACL)
+Step 4: Open the Bucket
+•	Click on the bucket name
+•	Go to Permissions tab
+________________________________________
+Step 5: Edit Bucket ACL
+•	Scroll to Access Control List (ACL)
+•	Click Edit
+Under Public access:
+•	Everyone (public access) → ✔ Read access
+✔ Save changes
+📌 This allows public access at bucket level
+________________________________________
+3️⃣ Upload Object to the Bucket
+Step 6: Upload File
+•	Go to Objects tab
+•	Click Upload
+•	Click Add files
+•	Select file (e.g., image.jpg)
+•	Click Upload
+________________________________________
+4️⃣ Enable Public Access for Object (ACL)
+Step 7: Object-Level ACL Permission
+•	Click on uploaded object
+•	Go to Permissions tab
+•	Scroll to Access Control List (ACL)
+•	Click Edit
+Under Public access:
+•	Everyone (public access) → ✔ Read access
+✔ Save changes
+________________________________________
+5️⃣ Verify Public Access
+Step 8: Test Object URL
+•	Copy Object URL
+•	Open in browser (incognito)
+✔ Object should be accessible without login
+________________________________________
+2. S3 Versioning & Cross-Region Replication 
+________________________________________
+1️⃣ Enabling Versioning in S3 (with Output Scenario)
+🔸 Objective
+To enable version control on an S3 bucket and observe object versions.
+________________________________________
+🔸 Steps to Enable Versioning
+1.	Open AWS Management Console
+2.	Navigate to S3
+3.	Select the bucket
+4.	Go to Properties tab
+5.	Scroll to Bucket Versioning
+6.	Click Edit
+7.	Select Enable
+8.	Click Save changes
+✔ Versioning is now enabled
+________________________________________
+🔸 Output Scenario (What You Observe)
+Step A: Upload Object
+•	Upload file: report.pdf
+📌 Output:
+•	Version ID is assigned automatically
+________________________________________
+Step B: Modify and Re-upload Same Object
+•	Upload report.pdf again (same name)
+📌 Output:
+•	Old version is preserved
+•	New version becomes current
+________________________________________
+Step C: Delete Object
+•	Click Delete on report.pdf
+📌 Output:
+•	Object appears deleted
+•	A Delete Marker is created
+•	Older versions still exist and can be restored
+________________________________________
+
+2️⃣ Cross-Region Replication (CRR) 
+🔸 Objective
+To replicate objects from one bucket to another in a different region using AWS-managed permissions.
+________________________________________
+🔸 Prerequisites (Very Important)
+✔ Versioning must be enabled on both buckets
+✔ Source and destination buckets must be in different regions
+✔ AWS Academy automatically handles replication permissions
+________________________________________
+Step 1️⃣ Create Destination Bucket
+1.	Go to S3 → Create bucket
+2.	Bucket name: dest-crr-bucket
+3.	Select different region
+4.	Complete bucket creation
+5.	Enable Versioning (same steps as above)
+________________________________________
+Step 2️⃣ Create Replication Rule (Without IAM Selection)
+1.	Open Source bucket
+2.	Go to Management tab
+3.	Click Replication rules
+4.	Click Create replication rule
+________________________________________
+Step 3️⃣ Configure Replication Rule
+•	Rule name: academy-crr-rule
+•	Status: Enabled
+•	Scope: Apply to all objects
+________________________________________
+Step 4️⃣ Choose Destination Bucket
+•	Select Another bucket
+•	Choose Destination bucket
+•	Confirm different region
+📌 AWS Academy Note:
+You will see an option like:
+"AWS will create and manage the required permissions automatically"
+✔ Select Use AWS-managed role / default role
+________________________________________
+Step 5️⃣ Replication Options
+•	Replicate:
+o	✔ New objects
+o	❌ Existing objects (optional, depends on Academy permissions)
+•	Encryption: Leave default
+Click Save
+✔ Replication rule is now active
+________________________________________
+3️⃣ CRR Output Scenario (What You Observe)
+🔸 Step A: Upload New Object to Source Bucket
+•	Upload file: image.png
+📌 Output:
+•	Object is uploaded normally
+________________________________________
+🔸 Step B: Verify Destination Bucket
+•	Open destination bucket
+•	Object image.png appears automatically
+•	Version ID is present
+✔ Replication successful
+________________________________________
+
+3.	Static Website Hosting in S3
+(Using Bucket-Level & Object-Level Permissions – ACL Method)
+________________________________________
+🔹 Objective
+To host a static website in Amazon S3 using index.html and error.html, and allow public access using ACL-based bucket and object permissions.
+________________________________________
+🔹 Prerequisites
+•	AWS / AWS Academy account
+•	Two files:
+o	index.html
+o	error.html
+________________________________________
+1️⃣ Create an S3 Bucket
+1.	Login to AWS Management Console
+2.	Go to Services → S3
+3.	Click Create bucket
+4.	Enter:
+o	Bucket name: my-static-site-bucket-123
+o	Region: Nearest region
+5.	Under Block Public Access:
+o	❌ Uncheck Block all public access
+o	✔ Acknowledge the warning
+6.	Click Create bucket
+✔ Bucket created successfully
+________________________________________
+2️⃣ Upload Website Files
+1.	Open the bucket
+2.	Go to Objects tab
+3.	Click Upload
+4.	Click Add files
+5.	Select:
+o	index.html
+o	error.html
+6.	Click Upload
+✔ Files uploaded
+________________________________________
+3️⃣ Enable Static Website Hosting
+1.	Go to Properties tab
+2.	Scroll to Static website hosting
+3.	Click Edit
+4.	Select Enable
+5.	Choose Host a static website
+6.	Enter:
+o	Index document: index.html
+o	Error document: error.html
+7.	Click Save changes
+✔ Static website hosting enabled
+________________________________________
+4️⃣ Enable Bucket-Level Public Access (ACL)
+🔹 Purpose
+Allows public users to access objects inside the bucket.
+________________________________________
+1.	Go to Permissions tab
+2.	Scroll to Access Control List (ACL)
+3.	Click Edit
+4.	Under Public access:
+o	Everyone (public access) → ✔ Read
+5.	Click Save changes
+✔ Bucket-level public read access enabled
+________________________________________
+5️⃣ Enable Object-Level Public Access (ACL)
+Steps (For Each File)
+1.	Go to Objects tab
+2.	Click on index.html
+3.	Go to Permissions
+4.	Scroll to Access Control List (ACL)
+5.	Click Edit
+6.	Under Public access:
+o	Everyone (public access) → ✔ Read
+7.	Save changes
+🔁 Repeat the same steps for error.html
+✔ Object-level public access enabled
+________________________________________
+6️⃣ Access the Static Website
+1.	Go to Properties
+2.	Scroll to Static website hosting
+3.	Copy the Bucket website endpoint
+4.	http://my-static-site-bucket-123.s3-website-region.amazonaws.com
+5.	Paste into browser
+✔ index.html page loads successfully
+________________________________________
+7️⃣ Error Page Output Scenario
+🔹 Test Error Page
+•	Open an invalid URL:
+•	http://bucket-name.s3-website-region.amazonaws.com/invalid.html
+📌 Output:
+•	error.html page is displayed
+✔ Error page working correctly
+
+
+VPC:
+🔹 Step 1: Create the VPC
+1.	Go to AWS Management Console → VPC
+2.	Click Create VPC
+3.	Choose VPC only
+4.	Enter:
+o	Name: Custom-VPC
+o	IPv4 CIDR block: e.g. 10.0.0.0/16
+5.	Click Create VPC
+🔹 Step 2: Create Subnets (Public & Private)
+Create subnets in same Availability Zones for high availability.
+Example:
+•	Public Subnet: 10.0.1.0/24 (AZ-A)
+•	Private Subnet: 10.0.2.0/24 (AZ-A)
+Steps:
+1.	Go to Subnets → Create subnet
+2.	Select your VPC
+3.	Choose AZ
+4.	Enter CIDR
+5.	Create subnet
+🔹 Step 3: Create an Internet Gateway (IGW)
+1.	Go to Internet Gateways
+2.	Click Create internet gateway
+3.	Name it Custom-IGW
+4.	Attach it to your VPC
+🔹 Step 4: Create Route Tables
+You need separate route tables for public and private subnets.
+Public Route Table
+1.	Go to Route Tables → Create route table
+2.	Select VPC
+3.	Add route:
+o	Destination: 0.0.0.0/0
+o	Target: Internet Gateway
+4.	Associate with public subnet
+Private Route Table
+•	Keep default local route only (no IGW)
+•	Associate with private subnet
+🔹 Step 5: Enable Auto-Assign Public IP (Public Subnet)
+1.	Select Public Subnet
+2.	Go to Edit subnet settings
+3.	Enable Auto-assign public IPv4 address
+🔹 Step 6: Configure Security Groups
+1.	Create a Security Group
+2.	Add inbound rules:
+o	HTTP (80) / HTTPS (443)
+o	SSH (22) from trusted IP
+3.	Attach to EC2 instances
+🔹 Step 7: Launch EC2 Instances
+•	Public EC2 → Public subnet
+•	Private EC2 → Private subnet
+Attach correct security groups.
+🔹 Step 8: Test the Setup
+•	Public EC2 → Internet access ✔
+•	Private EC2 → Internet via NAT ✔
+•	Private EC2 → No direct inbound access ✔
+
+VPC USING BASTION SERVER
+1.	VPC with Bastion Server 
+VPC & Subnet Design
+VPC CIDR: 10.0.0.0/16
+Public Subnet (Bastion Server): 10.0.1.0/24
+Private Subnet (Database Server): 10.0.2.0/24
+________________________________________
+2.	 Security Group Configuration (VERY IMPORTANT)
+Bastion Server Security Group (Public Subnet)
+Allows SSH (22) from:        My IP (Database Administrator)
+    Database Server Security Group (Private Subnet)
+Allows MySQL / Aurora (3306) from:   custom 		10.0.1.0/24 (Public subnet / Bastion subnet)
+Allows SSH (22) from:                           custom    	 Private IP of Bastion Server
+Does NOT allow public access
+________________________________________
+3.	Security Outcome
+Database server is NOT publicly accessible
+Only Bastion server can connect to DB server using SSH
+External users cannot access DB directly
+4.	EC2 Instance Creation
+Bastion Server
+Subnet: Public Subnet (10.0.1.0/24)
+Key pair: bastion.pem 
+Operating System: Ubuntu
+Database Server
+Subnet: Private Subnet (10.0.2.0/24)
+Key pair: dbserver.pem
+Operating System: Ubuntu
+________________________________________
+5.	Copy DB Server Key to Bastion Server
+Database server is in private subnet
+Direct SSH from local system is NOT possible
+DB server key must be copied to Bastion server
+Command (PowerShell):
+scp -i bastion.pem dbserver.pem ubuntu@<BASTION_PUBLIC_IP>:/home/ubuntu/
+File is copied securely using SCP
+dbserver.pem will now be available inside Bastion server
+________________________________________
+6.	Connect to Bastion Server
+SSH Command:
+ssh -i bastion.pem ubuntu@<BASTION_PUBLIC_IP>
+Verify key files:
+ls
+Output:
+bastion.pem
+dbserver.pem
+________________________________________
+7.	Connect from Bastion to Database Server
+SSH from Bastion:
+ssh -i dbserver.pem ubuntu@10.0.2.x
+Connection to DB server is successful
+Database administrator can now:
+Update database configurations
+Install required packages-------problem occurs
+Restart MySQL service
+
+
