@@ -83,6 +83,7 @@ it will show binary formats of network
 ---------------------------------------------------------
 OPEN DVWA IN KALI LINUX AS
 Open terminal in Linux
+->sudo apt install dvwa –y
 ->sudo service apache2 start 
 ->sudo service mysql start
 Open firefox and give 127.0.0.1/DVWA
@@ -165,3 +166,4 @@ Logout and again
 output: both sessionIDs should be different
 If security=low then sessionIDs are same
 -------------------------------------------
+
