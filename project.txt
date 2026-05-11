@@ -38,16 +38,7 @@ Ubuntu
 
 ________________________________________
  Connect EC2 Ubuntu Instance Using PuTTY (Windows) ---USING PEM KEYPAIR
-________________________________________
-PREREQUISITES
-You must have:
-•	✅ EC2 Ubuntu instance running
-•	✅ Public IPv4 address (or Elastic IP)
-•	✅ Key pair (.pem file) used while launching EC2
-•	✅ PuTTY & PuTTYgen installed
-👉 Download PuTTY:
-https://www.putty.org
-________________________________________
+
 🔹 STEP 1: Convert .pem to .ppk using PuTTYgen
 PuTTY cannot use .pem directly.
 Steps:
